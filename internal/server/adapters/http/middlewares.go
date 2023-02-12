@@ -1,9 +1,7 @@
 package httpserver
 
 import (
-	"bytes"
 	"io"
-
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -13,15 +11,15 @@ func(wa *WebApp) BodyMeasureMiddleware() gin.HandlerFunc {
 
 	return func(ctx *gin.Context){
 		pr, pw := io.Pipe()
-		
-		go func (){
-			var totalSize int
-			defer pr.Close()
+		tee := io.TeeReader(ctx.Request.Body, pw)
 
+		go func (){
+			defer pw.Close()
+			var totalSize int
 			b := make([]byte, 1024)
 
 			for {
-				chunkSize, err := pr.Read(b)
+				chunkSize, err := tee.Read(b)
 				if err == io.EOF{
 					break
 				}
@@ -37,12 +35,8 @@ func(wa *WebApp) BodyMeasureMiddleware() gin.HandlerFunc {
 				prometheus.Labels{"method": ctx.Request.Method}).
 				Observe(float64(totalSize))				
 		}()
-		
-		tee := io.TeeReader(ctx.Request.Body, pw)
-		data, _:= io.ReadAll(tee)
-		pw.Close()
 
-		ctx.Request.Body = io.NopCloser(bytes.NewReader(data))
+		ctx.Request.Body = io.NopCloser(pr)
 		ctx.Next()
 	} 
 }
