@@ -17,7 +17,6 @@ func(wa *WebApp) health(ctx *gin.Context) {
 
 func(wa *WebApp) upload (ctx *gin.Context){
 	multipart, err := ctx.Request.MultipartReader()
-
 	if err != nil{
 		wa.log.Sugar().Fatalw("Failed to create MultipartReader", "Error: ", err)
 	}

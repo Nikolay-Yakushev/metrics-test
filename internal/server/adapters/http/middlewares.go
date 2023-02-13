@@ -8,18 +8,18 @@ import (
 
 
 func(wa *WebApp) BodyMeasureMiddleware() gin.HandlerFunc {
-
 	return func(ctx *gin.Context){
 		pr, pw := io.Pipe()
-		tee := io.TeeReader(ctx.Request.Body, pw)
+		defer pw.Close()
 
 		go func (){
-			defer pw.Close()
 			var totalSize int
+			defer pr.Close()
+
 			b := make([]byte, 1024)
 
 			for {
-				chunkSize, err := tee.Read(b)
+				chunkSize, err := pr.Read(b)
 				if err == io.EOF{
 					break
 				}
@@ -35,8 +35,8 @@ func(wa *WebApp) BodyMeasureMiddleware() gin.HandlerFunc {
 				prometheus.Labels{"method": ctx.Request.Method}).
 				Observe(float64(totalSize))				
 		}()
-
-		ctx.Request.Body = io.NopCloser(pr)
+		tee := io.TeeReader(ctx.Request.Body, pw)
+		ctx.Request.Body = io.NopCloser(tee)
 		ctx.Next()
 	} 
 }
