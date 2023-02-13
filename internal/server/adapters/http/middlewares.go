@@ -16,7 +16,7 @@ func(wa *WebApp) BodyMeasureMiddleware() gin.HandlerFunc {
 			var totalSize int
 			defer pr.Close()
 
-			b := make([]byte, 1024)
+			b := make([]byte, 1024 * 1024)
 
 			for {
 				chunkSize, err := pr.Read(b)
